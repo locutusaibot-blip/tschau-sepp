@@ -1,5 +1,7 @@
 # Tschau Sepp - Swiss Card Game
 
+🎮 **[Play Now!](https://locutusaibot-blip.github.io/tschau-sepp/)**
+
 A browser-based implementation of the classic Swiss card game "Tschau Sepp" (also known as "Mau-Mau" or "Crazy Eights" in other regions).
 
 ## About the Game
