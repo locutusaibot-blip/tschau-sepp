@@ -1,13 +1,24 @@
-// Tschau Sepp Game Logic
+// Tschau Sepp Game Logic - with Real Card Images
 
 // Deutsche/Schweizer Jasskarten
 const SUITS = [
-    { symbol: '🔔', name: 'Schellen', color: 'gold' },
-    { symbol: '🌹', name: 'Rosen', color: 'red' },
-    { symbol: '⚔️', name: 'Schilten', color: 'black' },
-    { symbol: '🍃', name: 'Eicheln', color: 'green' }
+    { symbol: '🔔', name: 'Schellen', color: 'gold', key: 'schellen' },
+    { symbol: '🌹', name: 'Rosen', color: 'red', key: 'rosen' },
+    { symbol: '⚔️', name: 'Schilten', color: 'black', key: 'schilten' },
+    { symbol: '🍃', name: 'Eicheln', color: 'green', key: 'eicheln' }
 ];
 const VALUES = ['6', '7', '8', '9', '10', 'Under', 'Ober', 'König', 'Ass'];
+const VALUE_KEYS = {
+    '6': '6',
+    '7': '7',
+    '8': '8',
+    '9': '9',
+    '10': '10',
+    'Under': 'under',
+    'Ober': 'ober',
+    'König': 'konig',
+    'Ass': 'ass'
+};
 const SPECIAL_CARDS = {
     '7': 'draw2',
     '8': 'skip',
@@ -22,6 +33,13 @@ let discardPile = [];
 let currentPlayer = 'player';
 let direction = 1;
 let drawCount = 0;
+
+// Get card image path
+function getCardImagePath(card) {
+    const suit = SUITS.find(s => s.symbol === card.suit);
+    const valueKey = VALUE_KEYS[card.value];
+    return `assets/cards/${suit.key}_${valueKey}.jpg`;
+}
 
 // Initialize deck
 function createDeck() {
@@ -106,16 +124,17 @@ function playCard(cardIndex) {
     const topCard = discardPile[discardPile.length - 1];
 
     if (!canPlayCard(card, topCard)) {
-        showMessage('Diese Karte kannst du nicht spielen!');
+        showMessage('Diese Karte kann nicht gespielt werden!');
         return;
     }
 
-    // Remove card from hand
+    // Remove from hand and add to discard
     playerHand.splice(cardIndex, 1);
     discardPile.push(card);
 
-    // Check for win
+    // Check win
     if (playerHand.length === 0) {
+        updateDisplay();
         showMessage('🎉 Du hast gewonnen!');
         return;
     }
@@ -123,30 +142,19 @@ function playCard(cardIndex) {
     // Handle special cards
     handleSpecialCard(card);
 
-    // Switch turn if no special effect
-    if (!SPECIAL_CARDS[card.value] || SPECIAL_CARDS[card.value] === 'special') {
-        currentPlayer = 'computer';
-        updateDisplay();
+    updateDisplay();
+
+    // Computer's turn
+    if (currentPlayer === 'computer') {
         setTimeout(computerTurn, 1500);
-    } else {
-        updateDisplay();
     }
 }
 
-// Check if card can be played
 function canPlayCard(card, topCard) {
-    // Under (Bube) kann immer gespielt werden
+    // Under (Bube) is always playable
     if (card.value === 'Under') return true;
     
-    // Auf Under kann alles gespielt werden
-    if (topCard.value === 'Under') return true;
-    
-    // Ass kann nur auf Ass oder gleiche Farbe
-    if (card.value === 'Ass') {
-        return topCard.value === 'Ass' || card.suit === topCard.suit;
-    }
-    
-    // Normale Karten: gleiche Farbe oder gleicher Wert
+    // Match suit or value
     return card.suit === topCard.suit || card.value === topCard.value;
 }
 
@@ -155,188 +163,112 @@ function canPlayAnyCard(hand) {
     return hand.some(card => canPlayCard(card, topCard));
 }
 
-// Handle special cards
 function handleSpecialCard(card) {
-    const effect = SPECIAL_CARDS[card.value];
-
-    switch(effect) {
-        case 'draw2':
+    switch (SPECIAL_CARDS[card.value]) {
+        case 'draw2':  // 7
             drawCount += 2;
-            showMessage(`7 gespielt! Nächster zieht 2 Karten!`);
+            showMessage('7 gespielt! Nächster Spieler muss 2 Karten ziehen.');
             currentPlayer = 'computer';
-            setTimeout(computerDrawPenalty, 1000);
             break;
-
-        case 'skip':
-            showMessage(`8 gespielt! Computer wird übersprungen!`);
-            currentPlayer = 'player';
+        case 'skip':  // 8
+            showMessage('8 gespielt! Überspringen.');
+            // Player spielt nochmal
             break;
-
-        case 'joker':
-            // Spieler muss Farbe wählen!
-            showMessage(`Under (Bube) gespielt! Wähle eine Farbe:`);
-            showColorPicker();
+        case 'joker':  // Under
+            showMessage('Under gespielt! Joker - wähle beliebige Farbe.');
+            // For simplicity, keep same suit for now
             break;
-
-        case 'special':
-            showMessage('Ass gespielt! (Nur auf Ass oder gleiche Farbe)');
+        default:
             currentPlayer = 'computer';
-            setTimeout(computerTurn, 1500);
-            break;
     }
+}
+
+// Check win
+function checkWin() {
+    if (playerHand.length === 0) {
+        showMessage('🎉 Du hast gewonnen!');
+        return true;
+    }
+    if (computerHand.length === 0) {
+        showMessage('💻 Computer hat gewonnen!');
+        return true;
+    }
+    return false;
 }
 
 // Computer turn
 function computerTurn() {
     if (currentPlayer !== 'computer') return;
 
-    showMessage('Computer ist am Zug...');
-
-    setTimeout(() => {
-        const topCard = discardPile[discardPile.length - 1];
-        let playedCard = false;
-
-        // Priorisiere: Zuerst Spezialkarten, dann normale
-        let bestCardIndex = -1;
-        
-        // 1. Versuche Under zu spielen (wenn mehrere Karten)
-        for (let i = 0; i < computerHand.length; i++) {
-            if (computerHand[i].value === 'Under' && canPlayCard(computerHand[i], topCard)) {
-                bestCardIndex = i;
-                break;
-            }
-        }
-        
-        // 2. Versuche 7er oder 8er
-        if (bestCardIndex === -1) {
-            for (let i = 0; i < computerHand.length; i++) {
-                if ((computerHand[i].value === '7' || computerHand[i].value === '8') && 
-                    canPlayCard(computerHand[i], topCard)) {
-                    bestCardIndex = i;
-                    break;
-                }
-            }
-        }
-        
-        // 3. Spielbare Karte finden
-        if (bestCardIndex === -1) {
-            for (let i = 0; i < computerHand.length; i++) {
-                if (canPlayCard(computerHand[i], topCard)) {
-                    bestCardIndex = i;
-                    break;
-                }
-            }
-        }
-
-        if (bestCardIndex !== -1) {
-            const card = computerHand.splice(bestCardIndex, 1)[0];
-            discardPile.push(card);
-            showMessage(`Computer spielt: ${card.value} ${card.suit}`);
-            playedCard = true;
-
-            // Check for win
-            if (computerHand.length === 0) {
-                showMessage('🤖 Computer hat gewonnen!');
-                return;
-            }
-
-            // Handle special cards
-            if (SPECIAL_CARDS[card.value]) {
-                handleComputerSpecialCard(card);
-            } else {
-                currentPlayer = 'player';
-            }
-        }
-
-        // Draw if can't play
-        if (!playedCard) {
+    const topCard = discardPile[discardPile.length - 1];
+    
+    // Handle draw count (from 7)
+    if (drawCount > 0) {
+        for (let i = 0; i < drawCount; i++) {
             if (deck.length === 0) reshuffleDeck();
             computerHand.push(deck.pop());
-            showMessage('Computer zieht eine Karte.');
-            currentPlayer = 'player';
         }
-
+        showMessage(`Computer zieht ${drawCount} Karten.`);
+        drawCount = 0;
+        currentPlayer = 'player';
         updateDisplay();
-    }, 1000);
-}
+        return;
+    }
 
-function computerDrawPenalty() {
-    for (let i = 0; i < drawCount; i++) {
+    // Find playable cards
+    const playableCards = computerHand
+        .map((card, index) => ({ card, index }))
+        .filter(({ card }) => canPlayCard(card, topCard));
+
+    if (playableCards.length === 0) {
+        // Draw card
         if (deck.length === 0) reshuffleDeck();
         computerHand.push(deck.pop());
+        showMessage('Computer zieht eine Karte.');
+        currentPlayer = 'player';
+        updateDisplay();
+        return;
     }
-    showMessage(`Computer zieht ${drawCount} Karten!`);
-    drawCount = 0;
-    currentPlayer = 'player';
+
+    // Play random playable card
+    const { card, index } = playableCards[Math.floor(Math.random() * playableCards.length)];
+    computerHand.splice(index, 1);
+    discardPile.push(card);
+
+    showMessage(`Computer spielt ${card.value} ${card.suitName}`);
+
+    // Check win
+    if (computerHand.length === 0) {
+        updateDisplay();
+        showMessage('💻 Computer hat gewonnen!');
+        return;
+    }
+
+    // Handle special cards
+    handleComputerSpecialCard(card);
+
     updateDisplay();
+
+    // Continue if computer plays again
+    if (currentPlayer === 'computer') {
+        setTimeout(computerTurn, 1500);
+    }
 }
 
 function handleComputerSpecialCard(card) {
-    const effect = SPECIAL_CARDS[card.value];
-
-    switch(effect) {
-        case 'draw2':
+    switch (SPECIAL_CARDS[card.value]) {
+        case 'draw2':  // 7
             drawCount += 2;
-            showMessage(`Computer spielt ${card.value}! Du ziehst 2 Karten!`);
-            setTimeout(() => {
-                for (let i = 0; i < drawCount; i++) {
-                    if (deck.length === 0) reshuffleDeck();
-                    playerHand.push(deck.pop());
-                }
-                drawCount = 0;
-                currentPlayer = 'player';
-                updateDisplay();
-            }, 1500);
-            break;
-
-        case 'skip':
-            showMessage('Computer spielt 8! Du wirst übersprungen!');
-            setTimeout(computerTurn, 1500);
-            break;
-
-        case 'joker':
-            showMessage('Computer spielt Under! Wählt Farbe...');
-            setTimeout(() => {
-                // Computer wählt Farbe basierend auf seinen Karten
-                const colorCounts = {};
-                computerHand.forEach(card => {
-                    colorCounts[card.suitName] = (colorCounts[card.suitName] || 0) + 1;
-                });
-                
-                // Farbe mit meisten Karten wählen
-                let bestColor = 'Schellen';
-                let maxCount = 0;
-                for (const [color, count] of Object.entries(colorCounts)) {
-                    if (count > maxCount) {
-                        maxCount = count;
-                        bestColor = color;
-                    }
-                }
-                
-                // Setze gewählte Farbe
-                const colorMap = {
-                    'Schellen': { symbol: '🔔', color: 'gold' },
-                    'Rosen': { symbol: '🌹', color: 'red' },
-                    'Schilten': { symbol: '⚔️', color: 'black' },
-                    'Eicheln': { symbol: '🍃', color: 'green' }
-                };
-                
-                const chosen = colorMap[bestColor];
-                const topCard = discardPile[discardPile.length - 1];
-                topCard.suit = chosen.symbol;
-                topCard.suitName = bestColor;
-                topCard.suitColor = chosen.color;
-                
-                showMessage(`Computer wählt: ${bestColor} ${chosen.symbol}`);
-                currentPlayer = 'player';
-                updateDisplay();
-            }, 1500);
-            break;
-
-        case 'special':
-            showMessage('Computer spielt Ass!');
             currentPlayer = 'player';
             break;
+        case 'skip':  // 8
+            // Computer spielt nochmal
+            break;
+        case 'joker':  // Under
+            // Computer wählt Farbe (random)
+            break;
+        default:
+            currentPlayer = 'player';
     }
 }
 
@@ -352,32 +284,28 @@ function updateDisplay() {
     document.getElementById('computerCount').textContent = computerHand.length;
     document.getElementById('playerCount').textContent = playerHand.length;
 
-    // Player cards
+    // Player cards - using real images
     const playerCardsEl = document.getElementById('playerCards');
     const topCard = discardPile[discardPile.length - 1];
     
     playerCardsEl.innerHTML = playerHand.map((card, index) => {
         const playable = canPlayCard(card, topCard) && currentPlayer === 'player';
+        const imagePath = getCardImagePath(card);
         return `
-            <div class="card" 
-                 style="border-color: ${card.suitColor}; color: ${card.suitColor}"
-                 class="${playable ? 'playable' : ''}" 
+            <div class="card-image-container ${playable ? 'playable' : ''}" 
                  onclick="${playable ? `playCard(${index})` : ''}">
-                <div class="card-value">${card.value}</div>
-                <div class="card-suit">${card.suit}</div>
-                <div class="card-value">${card.value}</div>
+                <img src="${imagePath}" alt="${card.value} ${card.suitName}" class="card-img" />
             </div>
         `;
     }).join('');
 
-    // Top card
+    // Top card - using real image
     const topCardEl = document.getElementById('topCard');
     if (discardPile.length > 0) {
+        const imagePath = getCardImagePath(topCard);
         topCardEl.innerHTML = `
-            <div class="card" style="border-color: ${topCard.suitColor}; color: ${topCard.suitColor}">
-                <div class="card-value">${topCard.value}</div>
-                <div class="card-suit">${topCard.suit}</div>
-                <div class="card-value">${topCard.value}</div>
+            <div class="card-image-container">
+                <img src="${imagePath}" alt="${topCard.value} ${topCard.suitName}" class="card-img" />
             </div>
         `;
     }
@@ -397,32 +325,8 @@ function showMessage(msg) {
     document.getElementById('message').innerHTML = msg;
 }
 
-// Farbwahl für Under (Bube)
-function showColorPicker() {
-    const messageEl = document.getElementById('message');
-    messageEl.innerHTML = `
-        <div>Under gespielt! Wähle eine Farbe:</div>
-        <div style="display: flex; gap: 15px; justify-content: center; margin-top: 10px; flex-wrap: wrap;">
-            <button onclick="chooseColor('🔔', 'Schellen', 'gold')" style="font-size: 1.5em; padding: 10px 20px; cursor: pointer;">🔔 Schellen</button>
-            <button onclick="chooseColor('🌹', 'Rosen', 'red')" style="font-size: 1.5em; padding: 10px 20px; cursor: pointer;">🌹 Rosen</button>
-            <button onclick="chooseColor('⚔️', 'Schilten', 'black')" style="font-size: 1.5em; padding: 10px 20px; cursor: pointer;">⚔️ Schilten</button>
-            <button onclick="chooseColor('🍃', 'Eicheln', 'green')" style="font-size: 1.5em; padding: 10px 20px; cursor: pointer;">🍃 Eicheln</button>
-        </div>
-    `;
-}
-
-function chooseColor(symbol, name, color) {
-    // Ändere die Farbe der obersten Karte
-    const topCard = discardPile[discardPile.length - 1];
-    topCard.suit = symbol;
-    topCard.suitName = name;
-    topCard.suitColor = color;
-    
-    showMessage(`Farbe gewählt: ${name} ${symbol}`);
-    currentPlayer = 'computer';
-    updateDisplay();
-    setTimeout(computerTurn, 1500);
-}
-
 // Start game on load
-startGame();
+window.addEventListener('load', () => {
+    const messageEl = document.getElementById('message');
+    messageEl.innerHTML = 'Klicke auf "Neues Spiel" um zu beginnen!';
+});

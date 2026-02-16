@@ -161,6 +161,45 @@
             filter: drop-shadow(0 2px 3px rgba(0,0,0,0.2));
         }
 
+        /* Card Images */
+        .card-image-container {
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s, filter 0.2s;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+        
+        .card-image-container:hover {
+            transform: translateY(-8px) scale(1.05);
+            box-shadow: 0 8px 16px rgba(0,0,0,0.4);
+        }
+        
+        .card-image-container.playable {
+            box-shadow: 0 0 20px rgba(34, 139, 34, 0.8), 0 4px 8px rgba(0,0,0,0.3);
+            animation: pulse-card 1.5s ease-in-out infinite;
+        }
+        
+        .card-image-container.playable:hover {
+            box-shadow: 0 0 25px rgba(34, 139, 34, 1), 0 8px 16px rgba(0,0,0,0.4);
+        }
+        
+        @keyframes pulse-card {
+            0%, 100% {
+                box-shadow: 0 0 20px rgba(34, 139, 34, 0.8), 0 4px 8px rgba(0,0,0,0.3);
+            }
+            50% {
+                box-shadow: 0 0 30px rgba(34, 139, 34, 1), 0 4px 8px rgba(0,0,0,0.3);
+            }
+        }
+        
+        .card-img {
+            display: block;
+            width: auto;
+            height: 150px;
+            border-radius: 8px;
+        }
+
         /* Player Hand */
         .player-hand {
             margin-top: 40px;
