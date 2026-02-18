@@ -38,7 +38,7 @@ let drawCount = 0;
 function getCardImagePath(card) {
     const suit = SUITS.find(s => s.symbol === card.suit);
     const valueKey = VALUE_KEYS[card.value];
-    return `assets/cards/${suit.key}_${valueKey}.jpg`;
+    return `assets/cards/${suit.key}_${valueKey}.png`;
 }
 
 // Initialize deck
